@@ -13,9 +13,11 @@ cargo test
 
 Create a `.env` file with the following secrets:
 ```env
-CLOUDFLARE_TOKEN=
-CLOUDFLARE_ZONE_ID=123456,456789
+CLOUDFLARE_TOKEN=xxx
+CLOUDFLARE_ZONE_ID=b9bf66d603b6864d47a45ed8ebf36c8f
 ```
+
+`CLOUDFLARE_ZONE_ID` can be a comma seperated list for multiple domains.
 
 ```bash
 # display help
@@ -34,7 +36,7 @@ cargo run -- monitor
 ### Docker
 
 ```
-docker run --rm -it --env-file .env apollo-roboto/cfdpip:latest
+docker run --rm -it --env-file .env ghcr.io/apollo-roboto/rust-cloudflare-dynamic-public-ip:latest
 ```
 
 ## MQTT
