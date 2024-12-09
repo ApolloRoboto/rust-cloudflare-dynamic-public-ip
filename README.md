@@ -14,7 +14,7 @@ cargo test
 Create a `.env` file with the following secrets:
 ```env
 CLOUDFLARE_TOKEN=
-CLOUDFLARE_ZONE_ID=
+CLOUDFLARE_ZONE_ID=123456,456789
 ```
 
 ```bash
@@ -25,7 +25,7 @@ cargo run -- --help
 cargo run -- current
 
 # see the affected DNS records
-cargo run -- info
+cargo run -- check
 
 # monitor changes and update cloudflare DNS record
 cargo run -- monitor
@@ -47,7 +47,7 @@ All variables:
 MQTT_ENABLED
 MQTT_HOST # required
 MQTT_PORT # defaults to 1883
-MQTT_ID # defaults to cfdpip-xxxxxx
+MQTT_ID # default will have a random id similar to cfdpip-xxxxxx
 MQTT_BASE_TOPIC # defaults to cfdpip
 ```
 
