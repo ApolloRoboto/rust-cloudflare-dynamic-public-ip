@@ -107,6 +107,7 @@ impl DNSRecord {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[repr(i32)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum DNSType {
     #[default]
     A = 1,

@@ -23,7 +23,7 @@ impl CloudFlareClient {
         Self {
             client,
             token: String::from(token),
-            zone_id: zone_id,
+            zone_id,
             base_url: String::from(url),
         }
     }

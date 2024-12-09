@@ -49,7 +49,7 @@ pub async fn check_command(_args: &InfoArguments) -> i32 {
             }
         };
 
-        if records.len() == 0 {
+        if records.is_empty() {
             warn!(
                 "No DNS record is using the current public IP {}",
                 current_ip
@@ -178,7 +178,7 @@ async fn handle_update_ip_message(
 
     // will only leave on succesful response
     loop {
-        match update_ip(&cloudflare_client, old_ip, new_ip).await {
+        match update_ip(cloudflare_client, old_ip, new_ip).await {
             Ok(_) => {
                 info!("Successfully updated IP to {}", new_ip);
                 break;
