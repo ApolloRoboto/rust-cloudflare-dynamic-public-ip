@@ -1,5 +1,6 @@
 use std::{net::Ipv4Addr, sync::mpsc};
 
+use crate::{cloudflare::models::ZoneId, utils};
 use clap::Args;
 use log::{debug, error, info, trace, warn};
 
@@ -30,43 +31,40 @@ pub async fn current_command(_args: &CurrentArguments) -> i32 {
 #[derive(Debug, Args)]
 pub struct InfoArguments {}
 
-pub async fn info_command(_args: &InfoArguments) -> i32 {
-    let cloudflare_token = std::env::var("CLOUDFLARE_TOKEN")
-        .expect("Environment variable CLOUDFLARE_TOKEN is not set");
-    let cloudflare_zone_id = std::env::var("CLOUDFLARE_ZONE_ID")
-        .expect("Environment variable CLOUDFLARE_ZONE_ID is not set");
-
-    let cloudflare_client = CloudFlareClient::new(&cloudflare_token, &cloudflare_zone_id);
+pub async fn check_command(_args: &InfoArguments) -> i32 {
+    let cloudflare_clients = build_cloudflare_clients();
 
     let current_ip = public_ip::addr_v4().await.expect("Could not get public IP");
     info!("Current IP: {}", current_ip);
 
-    let records = match cloudflare_client
-        .get_dns_records_with_content(&current_ip.to_string())
-        .await
-    {
-        Ok(res) => res.result,
-        Err(e) => {
-            error!("Failed to get dns records: {:?}", e);
-            return 1;
+    for client in cloudflare_clients {
+        let records = match client
+            .get_dns_records_with_content(&current_ip.to_string())
+            .await
+        {
+            Ok(res) => res.result,
+            Err(e) => {
+                error!("Failed to get dns records: {:?}", e);
+                return 1;
+            }
+        };
+
+        if records.is_empty() {
+            warn!(
+                "No DNS record is using the current public IP {}",
+                current_ip
+            );
+            return 0;
         }
-    };
 
-    if records.len() == 0 {
-        warn!(
-            "No DNS record is using the current public IP {}",
-            current_ip
-        );
-        return 0;
+        let mut text = format!("Affected records in zone {}:", client.zone_id);
+
+        for record in records {
+            text.push_str(&format!("\n{:<6} {}", record.r#type, record.name));
+        }
+
+        info!("{}", text);
     }
-
-    let mut text = String::from("Affected records:");
-
-    for record in records {
-        text.push_str(&format!("\n{:<6} {}", record.r#type, record.name));
-    }
-
-    info!("{}", text);
 
     0
 }
@@ -84,7 +82,7 @@ pub struct MonitorArguments {
 pub async fn monitor_command(args: &MonitorArguments) -> i32 {
     let mqtt_client = build_mqtt_client().await;
 
-    let cloudflare_client = build_cloudflare_client();
+    let cloudflare_clients = build_cloudflare_clients();
 
     let monitor_loop = MonitorLoop::new(std::time::Duration::from_secs(args.check_delay));
 
@@ -93,7 +91,7 @@ pub async fn monitor_command(args: &MonitorArguments) -> i32 {
     for message in monitor_loop.listen() {
         match message {
             MonitorLoopMessage::IpChanged { old_ip, new_ip } => {
-                handle_update_ip_message(old_ip, new_ip, &mqtt_client, &cloudflare_client).await
+                handle_update_ip_message(old_ip, new_ip, &mqtt_client, &cloudflare_clients).await
             }
             MonitorLoopMessage::CouldNotGetIp => warn!("Could not get public IP"),
             MonitorLoopMessage::NoChange => trace!("No IP change"),
@@ -103,14 +101,27 @@ pub async fn monitor_command(args: &MonitorArguments) -> i32 {
     0
 }
 
-fn build_cloudflare_client() -> CloudFlareClient {
+/// will make one client per zone_id
+fn build_cloudflare_clients() -> Vec<CloudFlareClient> {
     trace!("Building CloudFlareClient");
     let cloudflare_token = std::env::var("CLOUDFLARE_TOKEN")
         .expect("Environment variable CLOUDFLARE_TOKEN is not set");
     let cloudflare_zone_id = std::env::var("CLOUDFLARE_ZONE_ID")
         .expect("Environment variable CLOUDFLARE_ZONE_ID is not set");
 
-    CloudFlareClient::new(&cloudflare_token, &cloudflare_zone_id)
+    // split list
+    let cloudflare_zone_id: Vec<String> = utils::get_list_string(&cloudflare_zone_id);
+
+    // collect as ZoneId
+    let cloudflare_zone_id: Vec<ZoneId> = cloudflare_zone_id
+        .iter()
+        .map(|s| ZoneId::new(s).expect("Invalid ZoneId"))
+        .collect();
+
+    cloudflare_zone_id
+        .iter()
+        .map(|zone_id| CloudFlareClient::new(&cloudflare_token, zone_id.clone()))
+        .collect()
 }
 
 async fn build_mqtt_client() -> Option<MqttClient> {
@@ -133,8 +144,13 @@ async fn build_mqtt_client() -> Option<MqttClient> {
         .unwrap_or(String::from("1883"))
         .parse()
         .expect("Environment variable MQTT_PORT must be a valid number");
-    let mqtt_id = std::env::var("MQTT_ID").unwrap_or(String::from("cfdpip"));
+
+    let mqtt_id =
+        std::env::var("MQTT_ID").unwrap_or(format!("cfdpip-{}", utils::generate_random_string(6)));
+
     let mqtt_base_topic = std::env::var("MQTT_BASE_TOPIC").unwrap_or(String::from("cfdpip"));
+
+    info!("MQTT Client ID is {}", mqtt_id);
 
     Some(MqttClient::new(&mqtt_host, mqtt_port, &mqtt_id, &mqtt_base_topic).await)
 }
@@ -143,7 +159,7 @@ async fn handle_update_ip_message(
     old_ip: Ipv4Addr,
     new_ip: Ipv4Addr,
     mqtt_client: &Option<MqttClient>,
-    cloudflare_client: &CloudFlareClient,
+    cloudflare_client: &Vec<CloudFlareClient>,
 ) {
     info!("IP address change detected from {} to {}", old_ip, new_ip);
 
@@ -160,8 +176,9 @@ async fn handle_update_ip_message(
         }
     }
 
+    // will only leave on succesful response
     loop {
-        match update_ip(&cloudflare_client, old_ip, new_ip).await {
+        match update_ip(cloudflare_client, old_ip, new_ip).await {
             Ok(_) => {
                 info!("Successfully updated IP to {}", new_ip);
                 break;
@@ -179,33 +196,39 @@ async fn handle_update_ip_message(
 }
 
 async fn update_ip(
-    client: &CloudFlareClient,
+    clients: &Vec<CloudFlareClient>,
     old_ip: Ipv4Addr,
     new_ip: Ipv4Addr,
 ) -> Result<(), CloudFlareClientError> {
-    let records = match client
-        .get_dns_records_with_content(&old_ip.to_string())
-        .await
-    {
-        Ok(r) => r.result,
-        Err(e) => return Err(e),
-    };
+    for client in clients {
+        let records = match client
+            .get_dns_records_with_content(&old_ip.to_string())
+            .await
+        {
+            Ok(r) => r.result,
+            Err(e) => return Err(e),
+        };
 
-    debug!("Found {} records to update", records.len());
+        debug!(
+            "Found {} records to update in zone {}",
+            records.len(),
+            client.zone_id
+        );
 
-    for record in records {
-        let record_name = record.name.clone();
-        debug!("Updating record {}", record_name);
+        for record in records {
+            let record_name = record.name.clone();
+            debug!("Updating record {}", record_name);
 
-        let mut new_record = UpdateDNSRecordRequest::from(record);
-        new_record.content = new_ip.to_string();
+            let mut new_record = UpdateDNSRecordRequest::from(record);
+            new_record.content = new_ip.to_string();
 
-        if let Err(e) = client.set_dns_record(new_record).await {
-            error!("Failed to update record {}", record_name);
-            return Err(e);
+            if let Err(e) = client.set_dns_record(new_record).await {
+                error!("Failed to update record {}", record_name);
+                return Err(e);
+            }
+
+            info!("Successfully updated record {}", record_name);
         }
-
-        info!("Successfully updated record {}", record_name);
     }
 
     Ok(())

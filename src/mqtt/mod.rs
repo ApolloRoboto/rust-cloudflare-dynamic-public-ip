@@ -53,7 +53,7 @@ impl MqttClient {
         let payload: Bytes = payload.into();
 
         self.client
-            .publish(&topic, QoS::AtLeastOnce, true, payload)
+            .publish(&topic, QoS::AtLeastOnce, false, payload)
             .await
     }
 }

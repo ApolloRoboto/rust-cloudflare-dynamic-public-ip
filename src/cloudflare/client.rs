@@ -9,21 +9,21 @@ use std::time::Duration;
 pub struct CloudFlareClient {
     client: reqwest::Client,
     token: String,
-    zone_id: String,
+    pub zone_id: ZoneId,
     base_url: String,
 }
 
 impl CloudFlareClient {
-    pub fn new(token: &str, zone_id: &str) -> Self {
+    pub fn new(token: &str, zone_id: ZoneId) -> Self {
         CloudFlareClient::new_with_url(token, zone_id, "https://api.cloudflare.com")
     }
 
-    pub fn new_with_url(token: &str, zone_id: &str, url: &str) -> Self {
+    pub fn new_with_url(token: &str, zone_id: ZoneId, url: &str) -> Self {
         let client = reqwest::Client::builder().build().unwrap();
         Self {
             client,
             token: String::from(token),
-            zone_id: String::from(zone_id),
+            zone_id,
             base_url: String::from(url),
         }
     }
@@ -204,7 +204,7 @@ mod tests {
         client::CloudFlareClient,
         models::{
             CloudFlareClientError, DNSRecord, DNSType, ErrorResponse, Message, ResultInfo,
-            SuccessResponseList,
+            SuccessResponseList, ZoneId,
         },
     };
 
@@ -258,7 +258,11 @@ mod tests {
                 .body(&serde_json::to_string(&simple_dnsrecord_reponse()).unwrap());
         });
 
-        let client = CloudFlareClient::new_with_url("", "1234", &server.url("/"));
+        let client = CloudFlareClient::new_with_url(
+            "",
+            ZoneId::new("12345678901234567890123456789012").unwrap(),
+            &server.url("/"),
+        );
 
         let response = client.get_dns_records_with_content("test").await;
 
@@ -277,7 +281,11 @@ mod tests {
                 .body(&serde_json::to_string(&simple_api_error()).unwrap());
         });
 
-        let client = CloudFlareClient::new_with_url("", "1234", &server.url("/"));
+        let client = CloudFlareClient::new_with_url(
+            "",
+            ZoneId::new("12345678901234567890123456789012").unwrap(),
+            &server.url("/"),
+        );
 
         let response = client.get_dns_records_with_content("test").await;
 

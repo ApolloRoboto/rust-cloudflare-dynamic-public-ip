@@ -107,6 +107,7 @@ impl DNSRecord {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
 #[repr(i32)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum DNSType {
     #[default]
     A = 1,
@@ -148,6 +149,40 @@ impl DNSType {
 pub struct DNSRecordMeta {
     pub auto_added: bool,
     pub source: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Hash)]
+pub struct ZoneId(String);
+
+impl ZoneId {
+    pub fn new(value: &str) -> Result<Self, String> {
+        if value.len() > 32 {
+            return Err(String::from(
+                "Invalid ZoneId, must be less than 32 characters.",
+            ));
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+impl TryFrom<String> for ZoneId {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        ZoneId::new(&value)
+    }
+}
+
+impl fmt::Display for ZoneId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<ZoneId> for String {
+    fn from(value: ZoneId) -> Self {
+        value.0
+    }
 }
 
 #[cfg(test)]
