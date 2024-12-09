@@ -47,7 +47,7 @@ All variables:
 MQTT_ENABLED
 MQTT_HOST # required
 MQTT_PORT # defaults to 1883
-MQTT_ID # defaults to cfdpip
+MQTT_ID # defaults to cfdpip-xxxxxx
 MQTT_BASE_TOPIC # defaults to cfdpip
 ```
 
