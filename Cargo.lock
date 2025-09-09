@@ -1852,7 +1852,7 @@ dependencies = [
 
 [[package]]
 name = "rust-cloudflare-dynamic-public-ip"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bincode",
  "bytes",
