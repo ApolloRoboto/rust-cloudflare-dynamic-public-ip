@@ -163,7 +163,7 @@ async fn handle_update_ip_message(
 ) {
     info!("IP address change detected from {} to {}", old_ip, new_ip);
 
-    if let Some(ref mqtt_client) = mqtt_client {
+    if let Some(mqtt_client) = mqtt_client {
         match mqtt_client
             .publish_ip_change(IpChangeMessage {
                 old: old_ip,
