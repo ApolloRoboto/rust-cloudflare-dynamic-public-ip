@@ -1,7 +1,9 @@
-FROM rust:1.80.1-bookworm AS build
+FROM rust:1.89.0-bookworm AS build
 
 WORKDIR /usr/src/rust-cloudflare-dynamic-public-ip
-COPY . .
+COPY ./src/ ./src/
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
 RUN cargo install --path .
 
 FROM debian:bookworm-slim

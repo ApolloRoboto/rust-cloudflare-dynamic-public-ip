@@ -34,7 +34,7 @@ impl CloudFlareClient {
         loop {
             let request = request.try_clone().expect("Failed to clone request");
 
-            debug!("{} {}", request.method().to_string(), request.url());
+            debug!("{} {}", request.method(), request.url());
             match self.client.execute(request).await {
                 Ok(res) => return Ok(res),
                 Err(e) => {
