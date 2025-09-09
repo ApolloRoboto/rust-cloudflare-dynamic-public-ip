@@ -4,11 +4,14 @@ use std::{net::Ipv4Addr, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug)]
 pub enum CloudFlareClientError {
     Request(reqwest::Error),
+    Response(reqwest::Error),
     Api(ErrorResponse),
+    Other(String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -63,6 +66,7 @@ impl From<DNSRecord> for UpdateDNSRecordRequest {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct Message {
     pub code: i32,
+    #[serde(default)]
     pub message: String,
 }
 
@@ -78,16 +82,21 @@ pub struct ResultInfo {
 pub struct DNSRecord {
     pub content: String,
     pub name: String,
+    #[serde(default)]
     pub proxied: Option<bool>,
     pub r#type: DNSType,
+    #[serde(default)]
     pub comment: Option<String>,
+    #[serde(default)]
     pub comment_modified_on: Option<DateTime<Utc>>,
     pub created_on: DateTime<Utc>,
     pub id: String,
-    pub meta: Option<DNSRecordMeta>,
+    pub meta: Value,
     pub modified_on: DateTime<Utc>,
     pub proxiable: bool,
+    #[serde(default)]
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub tags_modified_on: Option<DateTime<Utc>>,
     pub ttl: Option<i32>,
 }
@@ -143,12 +152,6 @@ impl DNSType {
     pub fn id(&self) -> i32 {
         self.clone() as i32
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-pub struct DNSRecordMeta {
-    pub auto_added: bool,
-    pub source: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Hash)]

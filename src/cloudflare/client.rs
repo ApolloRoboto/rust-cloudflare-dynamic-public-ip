@@ -104,11 +104,20 @@ impl CloudFlareClient {
             Err(e) => return Err(CloudFlareClientError::Request(e)),
         };
 
-        match res.status() {
-            StatusCode::OK => Ok(res.json::<SuccessResponseList<DNSRecord>>().await.unwrap()),
-            _ => Err(CloudFlareClientError::Api(
-                res.json::<ErrorResponse>().await.unwrap(),
-            )),
+        let status = res.status();
+        let text = res.text().await.map_err(CloudFlareClientError::Response)?;
+
+        match status {
+            StatusCode::OK => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Ok(parsed_json)
+            }
+            _ => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Err(CloudFlareClientError::Api(parsed_json))
+            }
         }
     }
 
@@ -129,11 +138,20 @@ impl CloudFlareClient {
             Err(e) => return Err(CloudFlareClientError::Request(e)),
         };
 
-        match res.status() {
-            StatusCode::OK => Ok(res.json::<SuccessResponseList<DNSRecord>>().await.unwrap()),
-            _ => Err(CloudFlareClientError::Api(
-                res.json::<ErrorResponse>().await.unwrap(),
-            )),
+        let status = res.status();
+        let text = res.text().await.map_err(CloudFlareClientError::Response)?;
+
+        match status {
+            StatusCode::OK => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Ok(parsed_json)
+            }
+            _ => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Err(CloudFlareClientError::Api(parsed_json))
+            }
         }
     }
 
@@ -152,11 +170,16 @@ impl CloudFlareClient {
             Err(e) => return Err(CloudFlareClientError::Request(e)),
         };
 
-        match res.status() {
+        let status = res.status();
+        let text = res.text().await.map_err(CloudFlareClientError::Response)?;
+
+        match status {
             StatusCode::OK => Ok(()),
-            _ => Err(CloudFlareClientError::Api(
-                res.json::<ErrorResponse>().await.unwrap(),
-            )),
+            _ => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Err(CloudFlareClientError::Api(parsed_json))
+            }
         }
     }
 
@@ -186,11 +209,16 @@ impl CloudFlareClient {
             Err(e) => return Err(CloudFlareClientError::Request(e)),
         };
 
-        match res.status() {
+        let status = res.status();
+        let text = res.text().await.map_err(CloudFlareClientError::Response)?;
+
+        match status {
             StatusCode::OK => Ok(()),
-            _ => Err(CloudFlareClientError::Api(
-                res.json::<ErrorResponse>().await.unwrap(),
-            )),
+            _ => {
+                let parsed_json = serde_json::from_str(&text)
+                    .map_err(|e| CloudFlareClientError::Other(e.to_string()))?;
+                Err(CloudFlareClientError::Api(parsed_json))
+            }
         }
     }
 }
@@ -228,7 +256,7 @@ mod tests {
                 comment_modified_on: None,
                 created_on: DateTime::from_timestamp(0, 0).unwrap(),
                 id: String::from(""),
-                meta: None,
+                meta: serde_json::Value::Null,
                 modified_on: DateTime::from_timestamp(0, 0).unwrap(),
                 proxiable: true,
                 tags: None,
