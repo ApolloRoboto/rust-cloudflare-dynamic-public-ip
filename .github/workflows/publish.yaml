@@ -38,4 +38,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/apollo-roboto/rust-cloudflare-dynamic-public-ip:${{ github.ref_name }}
+          tags: ghcr.io/apolloroboto/rust-cloudflare-dynamic-public-ip:${{ github.ref_name }}
