@@ -1,8 +1,10 @@
 use clap::{Parser, Subcommand};
 mod commands;
+mod style;
+use style::style;
 
 #[derive(Debug, Parser)]
-#[command(name = "Cloudflare Dynamic Public IP", bin_name = "cfdpip", author="ApolloRoboto", version, about="Automatically update public ip address in cloudflare dns records", long_about = None)]
+#[command(name = "Cloudflare Dynamic Public IP", bin_name = "cfdpip", author="ApolloRoboto", version, about="Automatically update public ip address in cloudflare dns records", long_about = None, styles = style())]
 pub struct Cli {
     #[arg(short, long, value_enum, default_value_t = LevelFilterArgument::Info, help = "Set verbosity level")]
     pub verbose: LevelFilterArgument,
