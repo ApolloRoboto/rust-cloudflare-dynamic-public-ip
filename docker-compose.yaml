@@ -2,7 +2,7 @@ name: cloudflare-dynamic-public-ip
 services:
 
   monitor:
-    image: ghcr.io/apollo-roboto/rust-cloudflare-dynamic-public-ip:latest
+    image: ghcr.io/apolloroboto/rust-cloudflare-dynamic-public-ip:latest
     command: monitor
     restart: unless-stopped
     environment:

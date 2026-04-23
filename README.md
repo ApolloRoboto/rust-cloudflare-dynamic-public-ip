@@ -36,7 +36,7 @@ cargo run -- monitor
 ### Docker
 
 ```
-docker run --rm -it --env-file .env ghcr.io/apollo-roboto/rust-cloudflare-dynamic-public-ip:latest
+docker run --rm -it --env-file .env ghcr.io/apolloroboto/rust-cloudflare-dynamic-public-ip:latest
 ```
 
 ## MQTT
