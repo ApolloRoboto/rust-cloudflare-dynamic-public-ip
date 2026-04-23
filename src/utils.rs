@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 
 pub fn generate_random_string(length: usize) -> String {
     let charset = b"abcdef0123456789";

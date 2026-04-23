@@ -280,7 +280,7 @@ mod tests {
     async fn get_dns_records_with_content_backend_returns_ok() {
         let server = MockServer::start();
         let cloudflare_mock = server.mock(|when, then| {
-            when.method(GET).path_contains("/dns_records");
+            when.method(GET).path_includes("/dns_records");
             then.status(200)
                 .header("content-type", "application/json")
                 .body(&serde_json::to_string(&simple_dnsrecord_reponse()).unwrap());
@@ -303,7 +303,7 @@ mod tests {
     async fn get_dns_records_with_content_backend_returns_404() {
         let server = MockServer::start();
         let cloudflare_mock = server.mock(|when, then| {
-            when.method(GET).path_contains("/dns_records");
+            when.method(GET).path_includes("/dns_records");
             then.status(404)
                 .header("content-type", "application/json")
                 .body(&serde_json::to_string(&simple_api_error()).unwrap());
