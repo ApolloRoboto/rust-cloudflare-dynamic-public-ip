@@ -41,7 +41,7 @@ pub enum Commands {
     #[command(
         about = "Print the affected DNS records, useful to test the connection to Cloudflare"
     )]
-    Check(commands::InfoArguments),
+    Check(commands::CheckArguments),
     #[command(about = "Monitor and update DNS records on Cloudflare when the public IP changes")]
     Monitor(commands::MonitorArguments),
 }

@@ -1,11 +1,11 @@
+use log::{debug, error, trace};
+use std::convert::TryFrom;
 use std::net::Ipv4Addr;
 
 use bincode::ErrorKind;
 use bytes::Bytes;
-use log::{debug, error, trace};
 use rumqttc::{AsyncClient, ClientError, MqttOptions, QoS};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use tokio::task;
 
 pub struct MqttClient {

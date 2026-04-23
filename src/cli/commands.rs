@@ -1,16 +1,15 @@
-use std::{net::Ipv4Addr, sync::mpsc};
+use crate::cloudflare::client::CloudFlareClient;
+use crate::cloudflare::models::ZoneId;
+use crate::cloudflare::models::{CloudFlareClientError, UpdateDNSRecordRequest};
+use crate::ip_monitor::{IpMonitor, IpMonitorConfig, IpMonitorConfigBuilder, IpMonitorMessage};
+use crate::mqtt::{IpChangeMessage, MqttClient};
+use crate::utils;
 
-use crate::{cloudflare::models::ZoneId, utils};
-use clap::Args;
 use log::{debug, error, info, trace, warn};
+use std::net::Ipv4Addr;
+use std::path::PathBuf;
 
-use crate::{
-    cloudflare::{
-        client::CloudFlareClient,
-        models::{CloudFlareClientError, UpdateDNSRecordRequest},
-    },
-    mqtt::{IpChangeMessage, MqttClient},
-};
+use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct CurrentArguments {}
@@ -29,9 +28,9 @@ pub async fn current_command(_args: &CurrentArguments) -> i32 {
 }
 
 #[derive(Debug, Args)]
-pub struct InfoArguments {}
+pub struct CheckArguments {}
 
-pub async fn check_command(_args: &InfoArguments) -> i32 {
+pub async fn check_command(_args: &CheckArguments) -> i32 {
     let cloudflare_clients = build_cloudflare_clients();
 
     let current_ip = public_ip::addr_v4().await.expect("Could not get public IP");
@@ -84,17 +83,22 @@ pub async fn monitor_command(args: &MonitorArguments) -> i32 {
 
     let cloudflare_clients = build_cloudflare_clients();
 
-    let monitor_loop = MonitorLoop::new(std::time::Duration::from_secs(args.check_delay));
+    let config = IpMonitorConfigBuilder::default()
+        .wait_time(std::time::Duration::from_secs(args.check_delay))
+        .build()
+        .unwrap();
+    let mut monitor = IpMonitor::new(config);
 
-    monitor_loop.start();
+    monitor.start();
 
-    for message in monitor_loop.listen() {
+    for message in monitor.listen() {
         match message {
-            MonitorLoopMessage::IpChanged { old_ip, new_ip } => {
+            IpMonitorMessage::Started(ip) => info!("Monitoring started, current public IP is {ip}"),
+            IpMonitorMessage::IpChanged { old_ip, new_ip } => {
                 handle_update_ip_message(old_ip, new_ip, &mqtt_client, &cloudflare_clients).await
             }
-            MonitorLoopMessage::CouldNotGetIp => warn!("Could not get public IP"),
-            MonitorLoopMessage::NoChange => trace!("No IP change"),
+            IpMonitorMessage::CouldNotGetIp => warn!("Could not get public IP"),
+            IpMonitorMessage::NoChange => trace!("No IP change"),
         }
     }
 
@@ -232,66 +236,4 @@ async fn update_ip(
     }
 
     Ok(())
-}
-
-#[derive(Debug)]
-enum MonitorLoopMessage {
-    IpChanged { old_ip: Ipv4Addr, new_ip: Ipv4Addr },
-    CouldNotGetIp,
-    NoChange,
-}
-
-struct MonitorLoop {
-    wait_time: std::time::Duration,
-    tx: mpsc::Sender<MonitorLoopMessage>,
-    rx: mpsc::Receiver<MonitorLoopMessage>,
-}
-
-impl MonitorLoop {
-    fn new(wait_time: std::time::Duration) -> Self {
-        let (tx, rx) = mpsc::channel();
-        Self { wait_time, tx, rx }
-    }
-
-    fn start(&self) {
-        let wait_time = self.wait_time;
-        debug!("Loop wait time: {}ms", wait_time.as_millis());
-        let tx = self.tx.clone();
-
-        tokio::spawn(async move {
-            let start_ip = public_ip::addr_v4()
-                .await
-                .expect("Could not get public IP address");
-
-            info!("Current IP is {}", start_ip);
-
-            let mut old_ip = start_ip;
-
-            trace!("Starting IP monitoring loop");
-
-            loop {
-                if let Some(current_ip) = public_ip::addr_v4().await {
-                    if old_ip != current_ip {
-                        tx.send(MonitorLoopMessage::IpChanged {
-                            old_ip,
-                            new_ip: current_ip,
-                        })
-                        .unwrap();
-
-                        old_ip = current_ip;
-                    } else {
-                        tx.send(MonitorLoopMessage::NoChange).unwrap();
-                    }
-                } else {
-                    tx.send(MonitorLoopMessage::CouldNotGetIp).unwrap();
-                }
-
-                tokio::time::sleep(wait_time).await;
-            }
-        });
-    }
-
-    fn listen(&self) -> &mpsc::Receiver<MonitorLoopMessage> {
-        &self.rx
-    }
 }

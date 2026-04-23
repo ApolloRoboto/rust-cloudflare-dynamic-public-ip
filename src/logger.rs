@@ -1,5 +1,6 @@
-use colored::Colorize;
 use log::{Level, Log, Metadata, Record};
+
+use colored::Colorize;
 
 const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
 
