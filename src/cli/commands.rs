@@ -1,7 +1,7 @@
 use crate::cloudflare::client::CloudFlareClient;
 use crate::cloudflare::models::ZoneId;
 use crate::cloudflare::models::{CloudFlareClientError, UpdateDNSRecordRequest};
-use crate::ip_monitor::{IpMonitor, IpMonitorConfig, IpMonitorConfigBuilder, IpMonitorMessage};
+use crate::ip_monitor::{IpMonitor, IpMonitorConfig, IpMonitorMessage};
 use crate::mqtt::{IpChangeMessage, MqttClient};
 use crate::utils;
 
@@ -76,6 +76,9 @@ pub struct MonitorArguments {
         help = "Delay between IP checks in seconds"
     )]
     check_delay: u64,
+
+    #[arg(long, help = "Where to store the persistent data")]
+    data_file: Option<PathBuf>,
 }
 
 pub async fn monitor_command(args: &MonitorArguments) -> i32 {
@@ -83,22 +86,34 @@ pub async fn monitor_command(args: &MonitorArguments) -> i32 {
 
     let cloudflare_clients = build_cloudflare_clients();
 
-    let config = IpMonitorConfigBuilder::default()
-        .wait_time(std::time::Duration::from_secs(args.check_delay))
-        .build()
-        .unwrap();
+    let data_file_path = match &args.data_file {
+        Some(p) => p,
+        None => {
+            let project_directory =
+                directories::ProjectDirs::from("dev", "apolloroboto", "cfdpip").unwrap();
+            &project_directory.data_local_dir().join("data.json")
+        }
+    };
+
+    info!("Persitent data path: {data_file_path:?}");
+
+    let config = IpMonitorConfig::default()
+        .with_persistent_file(data_file_path.to_path_buf())
+        .with_wait_time(std::time::Duration::from_secs(args.check_delay));
     let mut monitor = IpMonitor::new(config);
 
-    monitor.start();
+    monitor.start().await;
 
-    for message in monitor.listen() {
-        match message {
-            IpMonitorMessage::Started(ip) => info!("Monitoring started, current public IP is {ip}"),
+    for msg in monitor.listen() {
+        match msg {
+            IpMonitorMessage::Started => {
+                info!("Monitoring started")
+            }
             IpMonitorMessage::IpChanged { old_ip, new_ip } => {
                 handle_update_ip_message(old_ip, new_ip, &mqtt_client, &cloudflare_clients).await
             }
-            IpMonitorMessage::CouldNotGetIp => warn!("Could not get public IP"),
-            IpMonitorMessage::NoChange => trace!("No IP change"),
+            IpMonitorMessage::Error(error) => warn!("Monitor error: {error:?}"),
+            IpMonitorMessage::NoChange => {}
         }
     }
 
@@ -184,7 +199,6 @@ async fn handle_update_ip_message(
     loop {
         match update_ip(cloudflare_client, old_ip, new_ip).await {
             Ok(_) => {
-                info!("Successfully updated IP to {}", new_ip);
                 break;
             }
             Err(e) => {
