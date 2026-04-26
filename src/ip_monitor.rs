@@ -172,6 +172,7 @@ impl PersistentData {
 
         let json = serde_json::to_string(&self)?;
         file.write_all(json.as_bytes()).await?;
+        file.flush().await?;
         Ok(())
     }
 
