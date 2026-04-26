@@ -77,10 +77,10 @@ impl IpMonitor {
             let mut old_ip = None;
 
             // find initial ip from path if it exists
-            if let Some(ref path) = persistent_file {
-                if let Ok(data) = PersistentData::read_from_file(path).await {
-                    old_ip = Some(data.last_known_ip);
-                }
+            if let Some(ref path) = persistent_file
+                && let Ok(data) = PersistentData::read_from_file(path).await
+            {
+                old_ip = Some(data.last_known_ip);
             }
 
             tx.send(IpMonitorMessage::Started).unwrap();
@@ -101,7 +101,7 @@ impl IpMonitor {
                     }
                 };
 
-                let ip_changed = old_ip.map_or(true, |ip| ip != current_ip);
+                let ip_changed = old_ip != Some(current_ip);
 
                 if ip_changed {
                     if let Some(prev_ip) = old_ip {
