@@ -3,8 +3,10 @@ services:
 
   monitor:
     image: ghcr.io/apolloroboto/rust-cloudflare-dynamic-public-ip:latest
-    command: monitor
+    command: monitor --data-file '/app/data.json'
     restart: unless-stopped
+    volumes:
+      - data:/app/
     environment:
       CLOUDFLARE_TOKEN: "${CLOUDFLARE_TOKEN}"
       CLOUDFLARE_ZONE_ID: |
@@ -13,3 +15,6 @@ services:
       MQTT_ENABLED: "true"
       MQTT_HOST: localhost
       MQTT_PORT: "1883"
+
+volumes:
+  data:
