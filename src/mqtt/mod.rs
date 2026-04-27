@@ -1,11 +1,13 @@
+use log::{debug, error, trace};
+use std::convert::TryFrom;
 use std::net::Ipv4Addr;
+use std::time::Duration;
 
 use bincode::ErrorKind;
 use bytes::Bytes;
-use log::{debug, error, trace};
+use rumqttc::ConnectionError;
 use rumqttc::{AsyncClient, ClientError, MqttOptions, QoS};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use tokio::task;
 
 pub struct MqttClient {
@@ -17,7 +19,7 @@ impl MqttClient {
     pub async fn new(host: &str, port: u16, id: &str, base_topic: &str) -> Self {
         let mut mqttoptions = MqttOptions::new(id, host, port);
         mqttoptions
-            .set_keep_alive(std::time::Duration::from_secs(60))
+            .set_keep_alive(std::time::Duration::from_secs(30))
             .set_clean_session(true);
 
         let (client, mut eventloop) = AsyncClient::new(mqttoptions.clone(), 10);
@@ -30,6 +32,10 @@ impl MqttClient {
                 match eventloop.poll().await {
                     Ok(v) => {
                         trace!("MQTT Event = {v:?}");
+                    }
+                    Err(ConnectionError::Io(e)) => {
+                        error!("MQTT Event IO Error = {e:?}");
+                        tokio::time::sleep(Duration::from_millis(5000)).await;
                     }
                     Err(e) => {
                         error!("MQTT Event Error = {e:?}");

@@ -1,5 +1,6 @@
 mod cli;
 mod cloudflare;
+mod ip_monitor;
 mod logger;
 mod mqtt;
 mod utils;

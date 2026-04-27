@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
-use log::{debug, warn};
-use reqwest::{Request, StatusCode};
-
 use super::models::*;
+
+use log::{debug, warn};
 use std::time::Duration;
+
+use reqwest::{Request, StatusCode};
 
 pub struct CloudFlareClient {
     client: reqwest::Client,

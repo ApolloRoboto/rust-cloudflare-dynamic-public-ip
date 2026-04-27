@@ -1,6 +1,7 @@
 #![allow(dead_code)]
-use core::fmt;
-use std::{net::Ipv4Addr, str::FromStr};
+
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -141,7 +142,7 @@ pub enum DNSType {
     URI = 256,
 }
 
-impl fmt::Display for DNSType {
+impl std::fmt::Display for DNSType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -176,7 +177,7 @@ impl TryFrom<String> for ZoneId {
     }
 }
 
-impl fmt::Display for ZoneId {
+impl std::fmt::Display for ZoneId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
